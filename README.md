@@ -1,0 +1,2 @@
+# core
+Medici core package
