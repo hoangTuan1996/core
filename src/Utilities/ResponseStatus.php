@@ -1,8 +1,8 @@
 <?php
 
-namespace Core\Utilities;
+namespace MediciVN\Core\Utilities;
 
-use Core\Exceptions\MediciException;
+use MediciVN\Core\Exceptions\MediciException;
 
 class ResponseStatus
 {

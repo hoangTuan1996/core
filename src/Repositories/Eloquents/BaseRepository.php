@@ -1,13 +1,13 @@
 <?php
 
-namespace Core\Repositories\Eloquents;
+namespace MediciVN\Core\Repositories\Eloquents;
 
 use Closure;
-use Core\Enums\Conditions;
-use Core\Enums\Operand;
-use Core\Exceptions\RepositoryException;
-use Core\Repositories\Interfaces\RepositoryInterface;
-use Core\Traits\HasFilters;
+use MediciVN\Core\Enums\Conditions;
+use MediciVN\Core\Enums\Operand;
+use MediciVN\Core\Exceptions\RepositoryException;
+use MediciVN\Core\Repositories\Interfaces\RepositoryInterface;
+use MediciVN\Core\Traits\HasFilters;
 use Illuminate\Container\Container as Application;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Database\Eloquent\Builder;

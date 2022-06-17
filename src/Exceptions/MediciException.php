@@ -1,10 +1,10 @@
 <?php
 
-namespace Core\Exceptions;
+namespace MediciVN\Core\Exceptions;
 
-use Core\Traits\ApiResponser;
-use Core\Traits\StatusCodeParser;
-use Core\Utilities\ResponseStatus;
+use MediciVN\Core\Traits\ApiResponser;
+use MediciVN\Core\Traits\StatusCodeParser;
+use MediciVN\Core\Utilities\ResponseStatus;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;

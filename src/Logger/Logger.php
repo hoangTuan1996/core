@@ -1,6 +1,6 @@
 <?php
 
-namespace Core\Logger;
+namespace MediciVN\Core\Logger;
 
 class Logger
 {

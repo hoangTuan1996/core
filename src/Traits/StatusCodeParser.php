@@ -1,9 +1,9 @@
 <?php
 
-namespace Core\Traits;
+namespace MediciVN\Core\Traits;
 
-use Core\Exceptions\MediciException;
-use Core\Utilities\ResponseStatus;
+use MediciVN\Core\Exceptions\MediciException;
+use MediciVN\Core\Utilities\ResponseStatus;
 
 trait StatusCodeParser
 {

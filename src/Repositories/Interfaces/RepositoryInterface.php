@@ -1,6 +1,6 @@
 <?php
 
-namespace Core\Repositories\Interfaces;
+namespace MediciVN\Core\Repositories\Interfaces;
 
 use Closure;
 use Illuminate\Database\Eloquent\Model;

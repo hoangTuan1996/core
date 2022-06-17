@@ -1,6 +1,6 @@
 <?php
 
-namespace Core\Enums;
+namespace MediciVN\Core\Enums;
 
 enum Operand implements HasCondition
 {

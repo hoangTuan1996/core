@@ -3,12 +3,12 @@
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "Root\\Core\\": "src/"
+            "MediciVN\\Core\\": "src/"
         }
     },
     "authors": [
         {
-            "name": "Medici-dev"
+            "name": "Medici Dev"
         }
     ],
     "require": {

@@ -1,6 +1,6 @@
 <?php
 
-namespace Core\Enums;
+namespace MediciVN\Core\Enums;
 
 interface HasCondition
 {

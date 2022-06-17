@@ -1,6 +1,6 @@
 <?php
 
-namespace Core\Rules;
+namespace MediciVN\Core\Rules;
 
 use Illuminate\Contracts\Validation\Rule;
 use Illuminate\Database\Eloquent\Model;

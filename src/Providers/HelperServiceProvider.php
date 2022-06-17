@@ -1,6 +1,6 @@
 <?php
 
-namespace Core\Providers;
+namespace MediciVN\Core\Providers;
 
 use Illuminate\Support\ServiceProvider;
 

@@ -1,8 +1,8 @@
 <?php
 
-namespace Core\Logger;
+namespace MediciVN\Core\Logger;
 
-use Core\Exceptions\MediciException;
+use MediciVN\Core\Exceptions\MediciException;
 use Exception;
 use Illuminate\Support\Facades\Log;
 

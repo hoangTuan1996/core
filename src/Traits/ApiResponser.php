@@ -1,8 +1,8 @@
 <?php
 
-namespace Core\Traits;
+namespace MediciVN\Core\Traits;
 
-use Core\Utilities\ResponseStatus;
+use MediciVN\Core\Utilities\ResponseStatus;
 use Illuminate\Http\JsonResponse;
 
 trait ApiResponser

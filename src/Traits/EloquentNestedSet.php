@@ -1,6 +1,6 @@
 <?php
 
-namespace Core\Traits;
+namespace MediciVN\Core\Traits;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;

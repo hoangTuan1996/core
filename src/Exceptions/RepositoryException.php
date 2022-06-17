@@ -1,6 +1,6 @@
 <?php
 
-namespace Core\Exceptions;
+namespace MediciVN\Core\Exceptions;
 
 use Exception;
 
