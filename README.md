@@ -1,4 +1,4 @@
-# core
+# Medici Core
 Medici core package
 
 - Repository, Pipeline
