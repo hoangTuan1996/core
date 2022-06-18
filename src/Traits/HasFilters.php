@@ -13,7 +13,7 @@ trait HasFilters
     public function filter(array $pipelines): self
     {
         $this->model = app(Pipeline::class)
-                ->send($this->model->query())
+                ->send($this->model)
                 ->through($pipelines)
                 ->thenReturn();
 

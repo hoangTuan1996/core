@@ -47,29 +47,7 @@ if (!function_exists('upload_images')) {
             $image->setFileInfoFromPath($source);
         }
 
-        switch ($image->mime()) {
-            case 'image/png':
-                $extension = 'png';
-
-                break;
-            case 'image/gif':
-                $extension = 'gif';
-
-                break;
-            case 'image/tif':
-                $extension = 'tif';
-
-                break;
-            case 'image/bmp':
-                $extension = 'bmp';
-
-                break;
-            case 'image/jpeg':
-            default:
-                $extension = 'jpg';
-
-                break;
-        }
+        $extension = get_image_extension($image);
 
         // Store raw image
         $filepath = "{$targetPath}/{$filenamePrefix}.{$extension}";
@@ -77,11 +55,6 @@ if (!function_exists('upload_images')) {
         $result['raw'] = $disk->url($filepath);
 
         $image->orientate();
-
-        // Store orientated original image
-        $filepath = "{$targetPath}/{$filenamePrefix}_o.{$extension}";
-        $disk->put($filepath, (string)$image->encode($extension), 'public');
-        $result['original'] = $disk->url($filepath);
 
         if (!empty($sizes)) {
             foreach ($sizes as $key => $size) {
@@ -180,29 +153,7 @@ if (!function_exists('upload_private_images')) {
             $image->setFileInfoFromPath($source);
         }
 
-        switch ($image->mime()) {
-            case 'image/png':
-                $extension = 'png';
-
-                break;
-            case 'image/gif':
-                $extension = 'gif';
-
-                break;
-            case 'image/tif':
-                $extension = 'tif';
-
-                break;
-            case 'image/bmp':
-                $extension = 'bmp';
-
-                break;
-            case 'image/jpeg':
-            default:
-                $extension = 'jpg';
-
-                break;
-        }
+        $extension = get_image_extension($image);
 
         // Store raw image
         $filepath = "{$targetPath}/{$filenamePrefix}.{$extension}";
@@ -210,12 +161,6 @@ if (!function_exists('upload_private_images')) {
         $disk->url($filepath);
         $result['raw'] = $filepath;
         $image->orientate();
-
-        // Store orientated original image
-        $filepath = "{$targetPath}/{$filenamePrefix}_o.jpg";
-        $disk->put($filepath, (string)$image->encode('jpg'), 'public');
-        $disk->url($filepath);
-        $result['original'] = $filepath;
 
         if (!empty($sizes)) {
             foreach ($sizes as $key => $size) {
@@ -242,6 +187,19 @@ if (!function_exists('upload_private_images')) {
     }
 }
 
+if (! function_exists('get_image_extension')) {
+    function get_image_extension($image): string
+    {
+        return matches($image->mime()) {
+            'image/png' => 'png',
+            'image/gif' => 'gif',
+            'image/tif' => 'tif',
+            'image/bmp' => 'bmp',
+            default 'image/jpeg' => 'jpg'
+        };
+    }
+}
+
 if (!function_exists('get_url_private')) {
     function get_url_private($urlImage): string
     {
@@ -254,6 +212,13 @@ if (!function_exists('get_url_private')) {
         ]);
         $request = $client->createPresignedRequest($command, $expiry);
         $url = (string)$request->getUri();
+
+        $url = str_replace(
+            "s3." . env('AWS_DEFAULT_REGION_PRIVATE', 'ap-southeast-1') . ".amazonaws.com/" . env('AWS_URL_PRIVATE', 'medici.dev.private') . "/", 
+            env('AWS_URL_PRIVATE', 'dev-private.cdn.medici.vn/'), 
+            $url
+        );
+
         return $url;
     }
 }
@@ -272,51 +237,8 @@ if (!function_exists('medici_logger')) {
      */
     function medici_logger(string $action, string $description, array $data = [], array $params = [])
     {
-        $logger = new Core\Logger\Logger();
+        $logger = new MediciVN\Core\Logger();
         $logger->setLogger(new MediciVN\Core\Logger\FileLogger());
         $logger->log($action, $description, $data, $params);
-    }
-}
-
-if (!function_exists('generate_random_verification_code')) {
-
-    /**
-     * The function generate random verification
-     *
-     * @param int $length
-     *
-     * @return int
-     */
-    function generate_random_verification_code(int $length): int
-    {
-        mt_srand(make_seed());
-        do {
-            $verificationCode = mt_rand() % 1000000;
-        } while ($verificationCode < 100000);
-        return $verificationCode;
-    }
-}
-
-if (!function_exists('make_seed')) {
-
-    /**
-     * @return float|int|string
-     */
-    function make_seed(): int
-    {
-        list($usec, $sec) = explode(' ', microtime());
-        return $sec + $usec * 1000000;
-    }
-}
-
-if (!function_exists('get_time')) {
-    /**
-     * @param int $time
-     *
-     * @return string
-     */
-    function get_time(int $time): string
-    {
-        return Carbon::now()->subMinute($time)->toDateTimeString();
     }
 }
