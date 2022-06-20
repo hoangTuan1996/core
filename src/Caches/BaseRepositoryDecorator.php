@@ -2,14 +2,13 @@
 
 namespace MediciVN\Core\Caches;
 
-use App\Exceptions\MediciException;
 use Closure;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Collection;
-use Modules\Entity\Cache\Cache;
-use Modules\Entity\Repositories\Eloquents\BaseRepository;
-use Modules\Entity\Repositories\Interfaces\RepositoryInterface;
 use Throwable;
+use Illuminate\Support\Collection;
+use Illuminate\Database\Eloquent\Model;
+use MediciVN\Core\Exceptions\MediciException;
+use MediciVN\Core\Repositories\Eloquents\BaseRepository;
+use MediciVN\Core\Repositories\Interfaces\RepositoryInterface;
 
 abstract class BaseRepositoryDecorator implements RepositoryInterface
 {
