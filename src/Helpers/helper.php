@@ -190,12 +190,13 @@ if (!function_exists('upload_private_images')) {
 if (! function_exists('get_image_extension')) {
     function get_image_extension($image): string
     {
-        return matches($image->mime()) {
-            'image/png' => 'png',
-            'image/gif' => 'gif',
-            'image/tif' => 'tif',
-            'image/bmp' => 'bmp',
-            default 'image/jpeg' => 'jpg'
+        return match ($image->mime()) {
+            "image/png" => "png",
+            "image/gif" => "gif",
+            "image/tif" => "tif",
+            "image/bmp" => "bmp",
+            "image/jpeg" => "jpg",
+            default => "jpg"
         };
     }
 }

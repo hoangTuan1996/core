@@ -4,7 +4,7 @@ namespace MediciVN\Core\Providers;
 
 use Illuminate\Support\ServiceProvider;
 
-class HelperServiceProvider extends ServiceProvider
+class MediciCoreHelperServiceProvider extends ServiceProvider
 {
     /**
      * Register services.
@@ -13,7 +13,7 @@ class HelperServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        foreach (glob('Helpers/*.php') as $file) {
+        foreach (glob(dirname(__DIR__) . '/Helpers/*.php') as $file) {
             require_once $file;
         }
     }
