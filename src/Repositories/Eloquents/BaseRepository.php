@@ -337,7 +337,7 @@ abstract class BaseRepository implements RepositoryInterface
                 $field = $value[0];
                 $condition = $value[1];
                 $val = $value[2];
-                $operand = (isset($value[3]) ?? Operand::EQUAL)->name();
+                $operand = (isset($value[3]) ? isset($value[3]) : Operand::EQUAL)->name();
 
                 switch ($condition) {
                     case Conditions::IN:
