@@ -4,7 +4,7 @@ namespace MediciVN\Core\Exceptions;
 
 use MediciVN\Core\Traits\ApiResponser;
 use MediciVN\Core\Traits\StatusCodeParser;
-use MediciVN\Core\Utilities\ResponseStatus;
+use App\Utilities\ResponseStatus;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
