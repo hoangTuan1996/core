@@ -2,7 +2,7 @@
 
 namespace MediciVN\Core\Traits;
 
-use MediciVN\Core\Utilities\ResponseStatus;
+use App\Utilities\ResponseStatus;
 use Illuminate\Http\JsonResponse;
 
 trait ApiResponser
