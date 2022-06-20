@@ -10,11 +10,11 @@ trait ApiResponser
     use StatusCodeParser;
 
     /**
-     * @param array $data
+     * @param mixed $data
      *
      * @return JsonResponse
      */
-    public function successResponse(array $data = []): JsonResponse
+    public function successResponse(mixed $data = []): JsonResponse
     {
         $response = [
             'success' => true,
