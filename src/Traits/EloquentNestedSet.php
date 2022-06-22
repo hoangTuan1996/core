@@ -2,14 +2,17 @@
 
 namespace MediciVN\Core\Traits;
 
+use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Events\QueuedClosure;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Throwable;
+
+use function Illuminate\Events\queueable;
 
 /**
  * Nested Set Model - hierarchies tree
@@ -57,6 +60,16 @@ trait EloquentNestedSet
     }
 
     /**
+     * Get queue connection
+     *
+     * @return string|null
+     */
+    public static function queueConnection(): string|null
+    {
+        return defined(static::class . '::QUEUE_CONNECTION') ? static::QUEUE_CONNECTION : null;
+    }
+
+    /**
      * Get table name
      *
      * @return string
@@ -85,6 +98,20 @@ trait EloquentNestedSet
     }
 
     /**
+     * Run callback on queue if a queue connection is provided
+     * Otherwise, run immediately
+     *
+     * @param string|Closure|QueuedClosure $callback
+     * @return QueuedClosure|Closure|string
+     */
+    public static function instantOrQueue(QueuedClosure|Closure|string $callback): QueuedClosure|Closure|string
+    {
+        return empty(static::queueConnection())
+            ? $callback
+            : queueable($callback)->onConnection(static::queueConnection());
+    }
+
+    /**
      * Update tree when CRUD
      *
      * @return void
@@ -96,23 +123,25 @@ trait EloquentNestedSet
         static::addGlobalScope('ignore_root', function (Builder $builder) {
             $builder->where(static::tableName() . '.' . static::primaryColumn(), '<>', static::rootId());
         });
+
+        // set default parent_id is root's id
         static::saving(function (Model $model) {
             if (empty($model->{static::parentIdColumn()})) {
                 $model->{static::parentIdColumn()} = static::rootId();
             }
-            DB::listen(function ($query) {
-                Log::channel('eloquent_nested_set')->debug('___', (array)$query);
-            });
         });
-        static::creating(function (Model $model) {
-            $model->updateTreeOnCreating();
-        });
-        static::updating(function (Model $model) {
-            $model->updateTreeOnUpdating();
-        });
-        static::deleting(function (Model $model) {
-            $model->updateTreeOnDeleting();
-        });
+
+        static::created(static::instantOrQueue(function (Model $model) {
+            $model->handleTreeOnCreated();
+        }));
+
+        static::updated(static::instantOrQueue(function (Model $model) {
+            $model->handleTreeOnUpdated();
+        }));
+
+        static::deleting(static::instantOrQueue(function (Model $model) {
+            $model->handleTreeOnDeleting();
+        }));
     }
 
     /**
@@ -282,10 +311,11 @@ trait EloquentNestedSet
      * @return void
      * @throws Throwable
      */
-    public function updateTreeOnCreating(): void
+    public function handleTreeOnCreated(): void
     {
         try {
             DB::beginTransaction();
+            $this->refresh();
             $parent = static::withoutGlobalScope('ignore_root')->find($this->{static::parentIdColumn()});
             $parentRgt = $parent->{static::rightColumn()};
 
@@ -303,6 +333,7 @@ trait EloquentNestedSet
                 ->where(static::leftColumn(), '>', $parentRgt)
                 ->update([static::leftColumn() => DB::raw(static::leftColumn() . " + $width")]);
 
+            $this->saveQuietly();
             DB::commit();
         } catch (Throwable $th) {
             DB::rollBack();
@@ -314,7 +345,7 @@ trait EloquentNestedSet
      * @return void
      * @throws Throwable
      */
-    public function updateTreeOnUpdating(): void
+    public function handleTreeOnUpdated(): void
     {
         $oldParentId = (int)$this->getOriginal(static::parentIdColumn());
         $newParentId = (int)$this->{static::parentIdColumn()};
@@ -325,6 +356,7 @@ trait EloquentNestedSet
 
         try {
             DB::beginTransaction();
+            $this->refresh();
             $width = $this->getWidth();
             $currentLft = $this->{static::leftColumn()};
             $currentRgt = $this->{static::rightColumn()};
@@ -371,6 +403,7 @@ trait EloquentNestedSet
                     static::rightColumn() => DB::raw("ABS(" . static::rightColumn() . ") + $distance"),
                 ]);
 
+            $this->saveQuietly();
             DB::commit();
         } catch (Throwable $th) {
             DB::rollBack();
@@ -382,7 +415,7 @@ trait EloquentNestedSet
      * @return void
      * @throws Throwable
      */
-    public function updateTreeOnDeleting(): void
+    public function handleTreeOnDeleting(): void
     {
         try {
             DB::beginTransaction();
