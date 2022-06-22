@@ -2,36 +2,30 @@
 Medici core package
 
 - Repository, Pipeline
-- NodesTree, EloquentNestedSet
+- NodesTree
+- [EloquentNestedSet](#EloquentNestedSet)
+  - [warning](#warning)
 - ApiResponser
 - StatusCode, Error Handler
-- File Helpers.php: upload_images, resize_image, upload_private_images, get_url_private, medici_logger
+- [Helpers](#Helpers)
 
 ## Helpers
 
-Thêm HelperServiceProvider vào config/app.php, example:
+Add `MediciCoreHelperServiceProvider` to `config/app.php`, example:
+
 ```injectablephp
     'providers' => [
         ...
-        App\Providers\HelperServiceProvider::class,
+        MediciVN\Core\Providers\MediciCoreHelperServiceProvider::class,
     ],
 ```
-hoặc thêm vào trong 
-```injectablephp
-class AppServiceProvider extends ServiceProvider
-{
-    /**
-     * Register any application services.
-     *
-     * @return void
-     */
-    public function register()
-    {
-        foreach (glob('medicivn/core/Helpers/*.php') as $file) {
-            require_once $file;
-        }
-    }
-```
+
+Functions:
+- upload_images
+- resize_image
+- upload_private_images
+- get_url_private
+- medici_logger
 
 ## EloquentNestedSet
 
@@ -39,7 +33,7 @@ Automatically update the tree when creating, updating and deleting a node.
 
 How to use:
 - First, a root node must be initialized in your model's table
-- Add ```use EloquentNestedSet;``` to your eloquent model, example:
+- Add `use EloquentNestedSet;` to your eloquent model, example:
 
 ```injectablephp
 class Category extends Model
@@ -56,7 +50,7 @@ Note: the values of the left and right columns accept negative values which need
 
 ### Validation
 
-NestedSet ParentRule is a utility to validate parent_id value when creating and updating a node.
+`NestedSetParentRule` is a utility to validate parent_id value when creating and updating a node.
 
 It will be checked with the following condition:
 - exists in the database
@@ -83,3 +77,9 @@ class StoreCategoryRequest extends FormRequest
     }
 }
 ```
+
+### Warning
+
+- If you are using `SoftDelete` and intend to no longer use it, 
+the calculation will be wrong because the records have been soft deleted.
+

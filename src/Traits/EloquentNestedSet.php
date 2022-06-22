@@ -110,8 +110,8 @@ trait EloquentNestedSet
         static::updating(function (Model $model) {
             $model->updateTreeOnUpdating();
         });
-        static::deleted(function (Model $model) {
-            $model->updateTreeOnDeleted();
+        static::deleting(function (Model $model) {
+            $model->updateTreeOnDeleting();
         });
     }
 
@@ -382,7 +382,7 @@ trait EloquentNestedSet
      * @return void
      * @throws Throwable
      */
-    public function updateTreeOnDeleted(): void
+    public function updateTreeOnDeleting(): void
     {
         try {
             DB::beginTransaction();
