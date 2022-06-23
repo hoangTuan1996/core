@@ -45,11 +45,13 @@ class Category extends Model
     const RIGHT = 'rgt'; // The right position column name of a node, default: 'rgt'
     const PARENT_ID = 'parent_id'; // The parent's id column name of a node, default: 'parent_id'
     /**
-     * The queue connection to handle tree when create, update and delete a node.
-     * Settings it in config/queue.php of your project.
-     * Default: null => run immediately instead queue
+     * The queue settings to handle tree when create, update and delete a node.
+     * Settings them in config/queue.php of your project.
+     * 
+     * If QUEUE_CONNECTION and QUEUE are not provided, handle tree immediately.
      */
     const QUEUE_CONNECTION = 'sqs';
+    const QUEUE = 'blablabla';
 ```
 
 Note: the values of the left and right columns accept negative values which need some processing logic

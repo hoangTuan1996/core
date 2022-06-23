@@ -11,7 +11,6 @@ use Illuminate\Events\QueuedClosure;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Throwable;
-
 use function Illuminate\Events\queueable;
 
 /**
@@ -70,6 +69,32 @@ trait EloquentNestedSet
     }
 
     /**
+     * Get queue
+     *
+     * @return string|null
+     */
+    public static function queue(): string|null
+    {
+        return defined(static::class . '::QUEUE') ? static::QUEUE : null;
+    }
+
+    /**
+     * Put callback into queue if a queue connection is provided
+     * Otherwise, run immediately
+     *
+     * @param Closure $callback
+     * @return void
+     */
+    public static function instantOrQueue(Closure $callback): void
+    {
+        if (static::queueConnection() || static::queue()) {
+            dispatch($callback)->onConnection(static::queueConnection())->onQueue(static::queue());
+        } else {
+            $callback();
+        }
+    }
+
+    /**
      * Get table name
      *
      * @return string
@@ -98,20 +123,6 @@ trait EloquentNestedSet
     }
 
     /**
-     * Run callback on queue if a queue connection is provided
-     * Otherwise, run immediately
-     *
-     * @param string|Closure|QueuedClosure $callback
-     * @return QueuedClosure|Closure|string
-     */
-    public static function instantOrQueue(QueuedClosure|Closure|string $callback): QueuedClosure|Closure|string
-    {
-        return empty(static::queueConnection())
-            ? $callback
-            : queueable($callback)->onConnection(static::queueConnection());
-    }
-
-    /**
      * Update tree when CRUD
      *
      * @return void
@@ -131,17 +142,32 @@ trait EloquentNestedSet
             }
         });
 
-        static::created(static::instantOrQueue(function (Model $model) {
-            $model->handleTreeOnCreated();
-        }));
+        static::created(function (Model $model) {
+            static::instantOrQueue(function () use ($model) {
+                $model->handleTreeOnCreated();
+            });
+        });
 
-        static::updated(static::instantOrQueue(function (Model $model) {
-            $model->handleTreeOnUpdated();
-        }));
+        static::updating(function (Model $model) {
+            $oldParentId = $model->getOriginal(static::parentIdColumn());
+            $newParentId = $model->{static::parentIdColumn()};
 
-        static::deleting(static::instantOrQueue(function (Model $model) {
-            $model->handleTreeOnDeleting();
-        }));
+            if ($oldParentId != $newParentId) {
+                // When run with queue, the new lft, rgt and parent_id will be assigned after calculation
+                // so keep the old parent_id
+                $model->{static::parentIdColumn()} = $oldParentId;
+
+                static::instantOrQueue(function () use ($model, $newParentId) {
+                    $model->handleTreeOnUpdating($newParentId);
+                });
+            }
+        });
+
+        static::deleting(function (Model $model) {
+            static::instantOrQueue(function () use ($model) {
+                $model->handleTreeOnDeleting();
+            });
+        });
     }
 
     /**
@@ -217,10 +243,10 @@ trait EloquentNestedSet
     /**
      * Initial a query builder to interact with tree
      *
-     * @param int|null $parentId
+     * @param $parentId
      * @return Builder
      */
-    public static function tree(int $parentId = null): Builder
+    public static function tree($parentId = null): Builder
     {
         $parentId = $parentId ?: static::rootId();
         $tableName = static::tableName();
@@ -308,6 +334,25 @@ trait EloquentNestedSet
     }
 
     /**
+     * Just save position fields of an instance even it has other changes
+     * Position fields: lft, rgt, parent_id
+     *
+     * @return Model
+     */
+    public function savePositionQuietly(): Model
+    {
+        static::query()
+            ->where(static::primaryColumn(), '=', $this->{static::primaryColumn()})
+            ->update([
+                static::leftColumn() => $this->{static::leftColumn()},
+                static::rightColumn() => $this->{static::rightColumn()},
+                static::parentIdColumn() => $this->{static::parentIdColumn()},
+            ]);
+
+        return $this;
+    }
+
+    /**
      * @return void
      * @throws Throwable
      */
@@ -315,14 +360,14 @@ trait EloquentNestedSet
     {
         try {
             DB::beginTransaction();
-            $this->refresh();
-            $parent = static::withoutGlobalScope('ignore_root')->find($this->{static::parentIdColumn()});
+            $node = static::find($this->id);
+            $parent = static::withoutGlobalScope('ignore_root')->find($node->{static::parentIdColumn()});
             $parentRgt = $parent->{static::rightColumn()};
 
             // Node mới sẽ được thêm vào sau (bên phải) các nodes cùng cha
-            $this->{static::leftColumn()} = $parentRgt;
-            $this->{static::rightColumn()} = $parentRgt + 1;
-            $width = $this->getWidth();
+            $node->{static::leftColumn()} = $parentRgt;
+            $node->{static::rightColumn()} = $parentRgt + 1;
+            $width = $node->getWidth();
 
             // Cập nhật các node bên phải của node cha
             static::withoutGlobalScope('ignore_root')
@@ -333,7 +378,7 @@ trait EloquentNestedSet
                 ->where(static::leftColumn(), '>', $parentRgt)
                 ->update([static::leftColumn() => DB::raw(static::leftColumn() . " + $width")]);
 
-            $this->saveQuietly();
+            $node->savePositionQuietly();
             DB::commit();
         } catch (Throwable $th) {
             DB::rollBack();
@@ -342,39 +387,34 @@ trait EloquentNestedSet
     }
 
     /**
+     * @param $newParentId
      * @return void
      * @throws Throwable
      */
-    public function handleTreeOnUpdated(): void
+    public function handleTreeOnUpdating($newParentId): void
     {
-        $oldParentId = (int)$this->getOriginal(static::parentIdColumn());
-        $newParentId = (int)$this->{static::parentIdColumn()};
-
-        if ($oldParentId === $newParentId) {
-            return;
-        }
-
         try {
             DB::beginTransaction();
-            $this->refresh();
-            $width = $this->getWidth();
-            $currentLft = $this->{static::leftColumn()};
-            $currentRgt = $this->{static::rightColumn()};
-            $query = static::withoutGlobalScope('ignore_root')->whereNot(static::primaryColumn(), $this->id);
+            // Khi dùng queue, cần lấy lft và rgt mới nhất trong DB ra tính toán.
+            $node = static::find($this->id);
+            $width = $node->getWidth();
+            $currentLft = $node->{static::leftColumn()};
+            $currentRgt = $node->{static::rightColumn()};
+            $query = static::withoutGlobalScope('ignore_root')->whereNot(static::primaryColumn(), $node->id);
 
             // Tạm thời để left và right các node con của node hiện tại ở giá trị âm
-            $this->descendants()->update([
+            $node->descendants()->update([
                 static::leftColumn() => DB::raw(static::leftColumn() . " * (-1)"),
                 static::rightColumn() => DB::raw(static::rightColumn() . " * (-1)"),
             ]);
 
             // Giả định node hiện tại bị xóa khỏi cây, cập nhật các node bên phải của node hiện tại
             (clone $query)
-                ->where(static::rightColumn(), '>', $this->{static::rightColumn()})
+                ->where(static::rightColumn(), '>', $node->{static::rightColumn()})
                 ->update([static::rightColumn() => DB::raw(static::rightColumn() . " - $width")]);
 
             (clone $query)
-                ->where(static::leftColumn(), '>', $this->{static::rightColumn()})
+                ->where(static::leftColumn(), '>', $node->{static::rightColumn()})
                 ->update([static::leftColumn() => DB::raw(static::leftColumn() . " - $width")]);
 
             // Tạo khoảng trống cho node hiện tại ở node cha mới, cập nhật các node bên phải của node cha mới
@@ -390,9 +430,10 @@ trait EloquentNestedSet
                 ->update([static::leftColumn() => DB::raw(static::leftColumn() . " + $width")]);
 
             // Cập nhật lại node hiện tại theo node cha mới
-            $this->{static::leftColumn()} = $newParentRgt;
-            $this->{static::rightColumn()} = $newParentRgt + $width - 1;
-            $distance = $this->{static::rightColumn()} - $currentRgt;
+            $node->{static::parentIdColumn()} = $newParentId;
+            $node->{static::leftColumn()} = $newParentRgt;
+            $node->{static::rightColumn()} = $newParentRgt + $width - 1;
+            $distance = $node->{static::rightColumn()} - $currentRgt;
 
             // Cập nhật lại các node con có left và right âm
             static::query()
@@ -403,7 +444,7 @@ trait EloquentNestedSet
                     static::rightColumn() => DB::raw("ABS(" . static::rightColumn() . ") + $distance"),
                 ]);
 
-            $this->saveQuietly();
+            $node->savePositionQuietly();
             DB::commit();
         } catch (Throwable $th) {
             DB::rollBack();
