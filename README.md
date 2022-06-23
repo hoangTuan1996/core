@@ -40,10 +40,18 @@ class Category extends Model
 {
     use EloquentNestedSet;
 
-    const ROOT_ID   = 99999; // the root node id, default: 1
-    const LEFT      = 'lft'; // the left position column name of a node, default: 'lft'
-    const RIGHT     = 'rgt'; // the right position column name of a node, default: 'rgt'
-    const PARENT_ID = 'parent_id'; // the parent's id column name of a node, default: 'parent_id'
+    const ROOT_ID = 99999; // The root node id, default: 1
+    const LEFT = 'lft'; // The left position column name of a node, default: 'lft'
+    const RIGHT = 'rgt'; // The right position column name of a node, default: 'rgt'
+    const PARENT_ID = 'parent_id'; // The parent's id column name of a node, default: 'parent_id'
+    /**
+     * The queue settings to handle tree when create, update and delete a node.
+     * Settings them in config/queue.php of your project.
+     * 
+     * If QUEUE_CONNECTION and QUEUE are not provided, handle tree immediately.
+     */
+    const QUEUE_CONNECTION = 'sqs';
+    const QUEUE = 'blablabla';
 ```
 
 Note: the values of the left and right columns accept negative values which need some processing logic
