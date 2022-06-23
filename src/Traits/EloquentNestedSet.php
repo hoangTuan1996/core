@@ -7,11 +7,9 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Events\QueuedClosure;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Throwable;
-use function Illuminate\Events\queueable;
 
 /**
  * Nested Set Model - hierarchies tree
@@ -46,6 +44,16 @@ trait EloquentNestedSet
     public static function leftColumn(): string
     {
         return defined(static::class . '::LEFT') ? static::LEFT : 'lft';
+    }
+
+    /**
+     * Get custom left column name
+     *
+     * @return string
+     */
+    public static function depthColumn(): string
+    {
+        return defined(static::class . '::DEPTH') ? static::DEPTH : 'depth';
     }
 
     /**
@@ -335,7 +343,7 @@ trait EloquentNestedSet
 
     /**
      * Just save position fields of an instance even it has other changes
-     * Position fields: lft, rgt, parent_id
+     * Position fields: lft, rgt, parent_id, depth
      *
      * @return Model
      */
@@ -347,6 +355,7 @@ trait EloquentNestedSet
                 static::leftColumn() => $this->{static::leftColumn()},
                 static::rightColumn() => $this->{static::rightColumn()},
                 static::parentIdColumn() => $this->{static::parentIdColumn()},
+                static::depthColumn() => $this->{static::depthColumn()},
             ]);
 
         return $this;
@@ -365,6 +374,7 @@ trait EloquentNestedSet
             $parentRgt = $parent->{static::rightColumn()};
 
             // Node mới sẽ được thêm vào sau (bên phải) các nodes cùng cha
+            $node->{static::depthColumn()} = $parent->{static::depthColumn()} + 1;
             $node->{static::leftColumn()} = $parentRgt;
             $node->{static::rightColumn()} = $parentRgt + 1;
             $width = $node->getWidth();
@@ -397,9 +407,10 @@ trait EloquentNestedSet
             DB::beginTransaction();
             // Khi dùng queue, cần lấy lft và rgt mới nhất trong DB ra tính toán.
             $node = static::find($this->id);
-            $width = $node->getWidth();
             $currentLft = $node->{static::leftColumn()};
             $currentRgt = $node->{static::rightColumn()};
+            $currentDepth = $node->{static::depthColumn()};
+            $width = $node->getWidth();
             $query = static::withoutGlobalScope('ignore_root')->whereNot(static::primaryColumn(), $node->id);
 
             // Tạm thời để left và right các node con của node hiện tại ở giá trị âm
@@ -430,10 +441,12 @@ trait EloquentNestedSet
                 ->update([static::leftColumn() => DB::raw(static::leftColumn() . " + $width")]);
 
             // Cập nhật lại node hiện tại theo node cha mới
+            $node->{static::depthColumn()} = $newParent->{static::depthColumn()} + 1;
             $node->{static::parentIdColumn()} = $newParentId;
             $node->{static::leftColumn()} = $newParentRgt;
             $node->{static::rightColumn()} = $newParentRgt + $width - 1;
             $distance = $node->{static::rightColumn()} - $currentRgt;
+            $depthChange = $node->{static::depthColumn()} - $currentDepth;
 
             // Cập nhật lại các node con có left và right âm
             static::query()
@@ -442,6 +455,7 @@ trait EloquentNestedSet
                 ->update([
                     static::leftColumn() => DB::raw("ABS(" . static::leftColumn() . ") + $distance"),
                     static::rightColumn() => DB::raw("ABS(" . static::rightColumn() . ") + $distance"),
+                    static::depthColumn() => DB::raw(static::depthColumn() . " + $depthChange"),
                 ]);
 
             $node->savePositionQuietly();
@@ -468,6 +482,7 @@ trait EloquentNestedSet
                 static::parentIdColumn() => $this->{static::parentIdColumn()},
                 static::leftColumn() => DB::raw(static::leftColumn() . " - 1"),
                 static::rightColumn() => DB::raw(static::rightColumn() . " - 1"),
+                static::depthColumn() => DB::raw(static::depthColumn() . " - 1"),
             ]);
 
             // Update the nodes to the right of the deleted node
