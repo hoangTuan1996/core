@@ -3,6 +3,7 @@
 namespace MediciVN\Core\Traits;
 
 use Closure;
+use Exception;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -87,6 +88,14 @@ trait EloquentNestedSet
     }
 
     /**
+     * @return bool
+     */
+    public static function queueEnabled(): bool
+    {
+        return !empty(static::queueConnection()) || !empty(static::queue());
+    }
+
+    /**
      * Put callback into queue if a queue connection is provided
      * Otherwise, run immediately
      *
@@ -95,7 +104,7 @@ trait EloquentNestedSet
      */
     public static function instantOrQueue(Closure $callback): void
     {
-        if (static::queueConnection() || static::queue()) {
+        if (static::queueEnabled()) {
             dispatch($callback)->onConnection(static::queueConnection())->onQueue(static::queue());
         } else {
             $callback();
@@ -131,6 +140,16 @@ trait EloquentNestedSet
     }
 
     /**
+     * check if 'this' model uses the SoftDeletes trait
+     *
+     * @return bool
+     */
+    public static function IsSoftDelete(): bool
+    {
+        return in_array('Illuminate\Database\Eloquent\SoftDeletes', class_uses(new static));
+    }
+
+    /**
      * Update tree when CRUD
      *
      * @return void
@@ -138,6 +157,11 @@ trait EloquentNestedSet
      */
     public static function booted(): void
     {
+        // If queue is declared, SoftDelete is required
+        if (static::queueEnabled() && !static::IsSoftDelete()) {
+            throw new Exception('SoftDelete trait is required if queue is enabled');
+        }
+
         // Ignore root node in global scope
         static::addGlobalScope('ignore_root', function (Builder $builder) {
             $builder->where(static::tableName() . '.' . static::primaryColumn(), '<>', static::rootId());
