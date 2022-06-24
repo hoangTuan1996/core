@@ -11,6 +11,8 @@ Medici core package
 
 ## Helpers
 
+---
+
 Add `MediciCoreHelperServiceProvider` to `config/app.php`, example:
 
 ```injectablephp
@@ -29,6 +31,8 @@ Functions:
 
 ## EloquentNestedSet
 
+---
+
 Automatically update the tree when creating, updating and deleting a node.
 
 How to use:
@@ -40,21 +44,56 @@ class Category extends Model
 {
     use EloquentNestedSet;
 
-    const ROOT_ID = 99999; // The root node id, default: 1
-    const LEFT = 'lft'; // The left position column name of a node, default: 'lft'
-    const RIGHT = 'rgt'; // The right position column name of a node, default: 'rgt'
-    const PARENT_ID = 'parent_id'; // The parent's id column name of a node, default: 'parent_id'
     /**
-     * The queue settings to handle tree when create, update and delete a node.
-     * Settings them in config/queue.php of your project.
+     * The root node id 
+     * Default: 1 
+     */
+    const ROOT_ID = 99999; 
+
+    /**
+     * The left position column name
+     * Default: 'lft'
+     *
+     * Note: 'lft' can be a negative number
+     */
+    const LEFT = 'lft';
+
+    /**
+     * The right position column name
+     * Default: 'rgt'
+     *
+     * Note: 'rgt' can be a negative number
+     */
+    const RIGHT = 'rgt';
+
+    /**
+     * The parent's id column name
+     * Default: 'parent_id'
+     */
+    const PARENT_ID = 'parent_id';
+
+    /**
+     * The depth column name
+     * The depth of a node - nth descendant, it doesn't affect left and right calculation
+     * Starting from the root node will have a depth of 0
+     * Default: 'depth'
+     */
+    const DEPTH = 'depth';
+
+    /**
+     * The queue connection is declared in your project `config/queue.php`.
+     * if QUEUE_CONNECTION and QUEUE are not provided, lft and rgt calculation are synchronized.
      * 
-     * If QUEUE_CONNECTION and QUEUE are not provided, handle tree immediately.
+     * Default: null
      */
     const QUEUE_CONNECTION = 'sqs';
-    const QUEUE = 'blablabla';
-```
 
-Note: the values of the left and right columns accept negative values which need some processing logic
+    /**
+     * Default: null
+     */
+    const QUEUE = 'your_queue';
+
+```
 
 ### Validation
 
@@ -88,6 +127,7 @@ class StoreCategoryRequest extends FormRequest
 
 ### Warning
 
-- If you are using `SoftDelete` and intend to no longer use it, 
-the calculation will be wrong because the records have been soft deleted.
-
+- If you are using `SoftDelete` and intend to stop using it, you must deal with soft deleted records.
+  The tree will be shuffled, and the calculation of lft and rgt may go wrong.
+- `SoftDelete` is required if you use `queue`.
+  Because the `queue` will not run in `deleting` and `deleted` events if a record is permanently deleted. 

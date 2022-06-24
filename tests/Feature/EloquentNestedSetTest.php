@@ -32,6 +32,13 @@ class EloquentNestedSetTest extends TestCase
     }
 
     /** @test */
+    public function it_must_detect_if_soft_detele_trait_in_use()
+    {
+        $this->assertTrue(CategorySoftDelete::IsSoftDelete());
+        $this->assertNotTrue(Category::IsSoftDelete());
+    }
+
+    /** @test */
     public function it_can_return_flat_tree()
     {
         Category::factory()->createMany([
