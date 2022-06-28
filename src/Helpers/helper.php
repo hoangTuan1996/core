@@ -1,10 +1,11 @@
 <?php
 
 use Carbon\Carbon;
+use MediciVN\Core\Logger\Logger;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Intervention\Image\Exception\NotReadableException;
 use Intervention\Image\ImageManagerStatic as Image;
+use Intervention\Image\Exception\NotReadableException;
 
 if (!function_exists('upload_images')) {
     /**
@@ -238,7 +239,7 @@ if (!function_exists('medici_logger')) {
      */
     function medici_logger(string $action, string $description, array $data = [], array $params = [])
     {
-        $logger = new MediciVN\Core\Logger();
+        $logger = new Logger();
         $logger->setLogger(new MediciVN\Core\Logger\FileLogger());
         $logger->log($action, $description, $data, $params);
     }
